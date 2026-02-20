@@ -1,6 +1,6 @@
 [project]
 name = "amisc"
-version = "0.8.0"
+version = "0.8.1"
 description = "Efficient framework for building surrogates of multidisciplinary systems using the adaptive multi-index stochastic collocation (AMISC) technique."
 authors = [
     {name = "Joshua Eckels", email = "eckelsjd@umich.edu"},
@@ -11,7 +11,7 @@ dependencies = [
     "matplotlib>=3.9",
     "networkx>=3.2",
     "pyyaml>=6.0.2",
-    "pydantic>=2.9.1",
+    "pydantic>=2.9.1, !=2.12.*",
     "dill>=0.3.9",
     "scikit-learn>=1.6.1",
 ]
