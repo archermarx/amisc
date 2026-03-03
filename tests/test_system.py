@@ -331,7 +331,7 @@ def test_fit_with_executor(model_cost=1, max_iter=5, max_workers=8):
     """Run fit with an executor."""
 
     def expensive_model(inputs, model_cost=1):
-        time.sleep(model_cost)
+        time.sleep(model_cost * 0.01)
         return {'y': -inputs['x1'] ** 3 + 2 * inputs['x2'] ** 2 + inputs['x3']}
 
     inputs = [Variable('x1', distribution='U(0, 1)'), Variable('x2', distribution='U(0, 1)'),

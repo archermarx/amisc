@@ -431,7 +431,7 @@ class Component(BaseModel, Serializable):
 
         # Gather all model kwargs (anything else passed in for kwargs is assumed to be a model kwarg)
         model_kwargs = kwargs.get('model_kwargs', {})
-        for key in kwargs.keys() - self.model_fields.keys():
+        for key in kwargs.keys() - Component.model_fields.keys():
             model_kwargs[key] = kwargs.pop(key)
         kwargs['model_kwargs'] = model_kwargs
 
@@ -441,12 +441,12 @@ class Component(BaseModel, Serializable):
             field = kwargs.get(key, None)
             if isinstance(field, dict):
                 field_super = next(filter(lambda x: issubclass(x, Serializable),
-                                          typing.get_args(self.model_fields[key].annotation)), None)
+                                          typing.get_args(Component.model_fields[key].annotation)), None)
                 field = field_super.from_dict(field) if field_super is not None else field
                 kwargs[key] = field
             if not serializers.get(key, None):
                 serializers[key] = type(field) if isinstance(field, Serializable) else (
-                    type(self.model_fields[key].default))
+                    type(Component.model_fields[key].default))
         kwargs['serializers'] = serializers
 
         super().__init__(model=model, inputs=inputs, outputs=outputs, name=name, **kwargs)  # Runs pydantic validation
