@@ -12,7 +12,7 @@ import copy
 import itertools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Callable
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -37,7 +37,7 @@ class TrainingData(Serializable, ABC):
     """
 
     @abstractmethod
-    def get(self, alpha: MultiIndex, beta: MultiIndex, y_vars: list[str] = None,
+    def get(self, alpha: MultiIndex, beta: MultiIndex, y_vars: list[str] | None = None,
             skip_nan: bool = False) -> tuple[Dataset, Dataset]:
         """Return the training data for a given multi-index pair.
 
@@ -82,7 +82,7 @@ class TrainingData(Serializable, ABC):
 
     @abstractmethod
     def refine(self, alpha: MultiIndex, beta: MultiIndex, input_domains: dict[str, tuple],
-               weight_fcns: dict[str, callable] = None) -> tuple[list[Any], Dataset]:
+               weight_fcns: dict[str, Callable] | None = None) -> tuple[list[Any], Dataset]:
         """Return new design/training points for a given multi-index pair and their coordinates/locations in the
         `TrainingData` storage structure.
 
@@ -178,7 +178,7 @@ class SparseGrid(TrainingData, PickleSerializable):
         self.error_map.clear()
         self.latent_size.clear()
 
-    def get_by_coord(self, alpha: MultiIndex, coords: list, y_vars: list = None, skip_nan: bool = False):
+    def get_by_coord(self, alpha: MultiIndex, coords: list, y_vars: list | None = None, skip_nan: bool = False):
         """Get training data from the sparse grid for a given `alpha` and list of grid coordinates. Try to replace
         `nan` values with imputed values. Skip any data points with remaining `nan` values if `skip_nan=True`.
 
@@ -196,7 +196,7 @@ class SparseGrid(TrainingData, PickleSerializable):
 
         first_yi = next(iter(self.yi_map[alpha].values()))
         if y_vars is None:
-            y_vars = first_yi.keys()
+            y_vars = list(first_yi.keys())
 
         for var in y_vars:
             yi = np.atleast_1d(first_yi[var])
@@ -227,7 +227,7 @@ class SparseGrid(TrainingData, PickleSerializable):
 
         return xi_dict, yi_dict  # Both with elements of shape (N, ...) for N grid points
 
-    def get(self, alpha: MultiIndex, beta: MultiIndex, y_vars: list[str] = None, skip_nan: bool = False):
+    def get(self, alpha: MultiIndex, beta: MultiIndex, y_vars: list[str] | None = None, skip_nan: bool = False):
         """Get the training data from the sparse grid for a given `alpha` and `beta` pair."""
         return self.get_by_coord(alpha, list(self._expand_grid_coords(beta)), y_vars=y_vars, skip_nan=skip_nan)
 
@@ -297,7 +297,7 @@ class SparseGrid(TrainingData, PickleSerializable):
 
                 self.yi_nan_map[alpha][coord] = copy.deepcopy(y_impute)
 
-    def refine(self, alpha: MultiIndex, beta: MultiIndex, input_domains: dict, weight_fcns: dict = None):
+    def refine(self, alpha: MultiIndex, beta: MultiIndex, input_domains: dict, weight_fcns: dict | None = None):
         """Refine the sparse grid for a given `alpha` and `beta` pair and given collocation rules. Return any new
         grid points that do not have model evaluations saved yet.
 
@@ -445,8 +445,8 @@ class SparseGrid(TrainingData, PickleSerializable):
         ind = np.nonzero(level_diff)[0]
         return ind.shape[0] == 1 and level_diff[ind] == 1
 
-    def beta_to_knots(self, beta: MultiIndex, knots_per_level: int = None, latent_size: dict = None,
-                      expand_latent_method: str = None) -> tuple:
+    def beta_to_knots(self, beta: MultiIndex, knots_per_level: int | None = None, latent_size: dict | None = None,
+                      expand_latent_method: str | None = None) -> tuple:
         """Convert a `beta` multi-index to the number of knots per dimension in the sparse grid.
 
         :param beta: refinement level indices
@@ -484,8 +484,8 @@ class SparseGrid(TrainingData, PickleSerializable):
         return tuple(grid_size)
 
     @staticmethod
-    def collocation_1d(N: int, z_bds: tuple, z_pts: np.ndarray = None,
-                       wt_fcn: callable = None, method='leja', opt_args=None) -> np.ndarray:
+    def collocation_1d(N: int, z_bds: tuple, z_pts: np.ndarray | None = None,
+                       wt_fcn: Callable | None = None, method='leja', opt_args=None) -> np.ndarray:
         """Find the next `N` points in the 1d sequence of `z_pts` using the provided collocation method.
 
         :param N: number of new points to add to the sequence
@@ -500,19 +500,22 @@ class SparseGrid(TrainingData, PickleSerializable):
         if wt_fcn is None:
             wt_fcn = lambda z: 1
         if z_pts is None:
-            z_pts = (z_bds[1] + z_bds[0]) / 2
+            z_points = (z_bds[1] + z_bds[0]) / 2
             N = N - 1
-        z_pts = np.atleast_1d(z_pts)
+        else:
+            z_points = z_pts
+            
+        z_points = np.atleast_1d(z_points)
 
         match method:
             case 'leja':
                 # Construct Leja sequence by maximizing the Leja objective sequentially
                 for i in range(N):
-                    obj_fun = lambda z: -wt_fcn(np.array(z)) * np.prod(np.abs(z - z_pts))
+                    obj_fun = lambda z: -wt_fcn(np.array(z)) * np.prod(np.abs(z - z_points))
                     res = direct(obj_fun, [z_bds], **opt_args)  # Use global DIRECT optimization over 1d domain
                     z_star = res.x
-                    z_pts = np.concatenate((z_pts, z_star))
+                    z_points = np.concatenate((z_points, z_star))
             case other:
                 raise NotImplementedError(f"Unknown collocation method: {other}")
 
-        return z_pts
+        return z_points

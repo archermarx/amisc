@@ -43,14 +43,14 @@ class Distribution(ABC):
     def __repr__(self):
         return self.__str__()
 
-    def domain(self, dist_args: tuple = None) -> tuple:
+    def domain(self, dist_args: tuple | None = None) -> tuple:
         """Return the domain of this distribution. Defaults to `dist_args`
 
         :param dist_args: overrides `self.dist_args`
         """
         return dist_args or self.dist_args
 
-    def nominal(self, dist_args: tuple = None) -> float:
+    def nominal(self, dist_args: tuple | None = None) -> float:
         """Return the nominal value of this distribution. Defaults to middle of domain.
 
         :param dist_args: overrides `self.dist_args`
@@ -124,7 +124,7 @@ class Distribution(ABC):
             raise NotImplementedError(f'The distribution "{dist_string}" is not recognized.')
 
     @abstractmethod
-    def sample(self, shape: int | tuple, nominal: float | np.ndarray = None, dist_args: tuple = None) -> np.ndarray:
+    def sample(self, shape: int | tuple, nominal: float | np.ndarray | None = None, dist_args: tuple | None = None) -> np.ndarray:
         """Sample from the distribution.
 
         :param shape: shape of the samples to return
@@ -135,7 +135,7 @@ class Distribution(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def pdf(self, x: np.ndarray, dist_args: tuple = None) -> np.ndarray:
+    def pdf(self, x: np.ndarray, dist_args: tuple | None = None) -> np.ndarray:
         """Evaluate the pdf of this distribution at the `x` locations.
 
         :param x: the locations at which to evaluate the pdf

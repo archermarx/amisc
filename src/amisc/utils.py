@@ -333,7 +333,7 @@ def search_for_file(filename: str | Path, search_paths=None):
     return filename
 
 
-def format_inputs(inputs: Dataset, var_shape: dict = None) -> tuple[Dataset, tuple[int, ...]]:
+def format_inputs(inputs: Dataset, var_shape: dict  | None = None) -> tuple[Dataset, tuple[int, ...]]:
     """Broadcast and reshape all inputs to the same shape. Loop shape is inferred from broadcasting the leading dims
     of all input arrays. Input arrays are broadcast to this shape and then flattened.
 
@@ -537,7 +537,7 @@ def relative_error(pred, targ, axis=None, skip_nan=False):
     return np.nan_to_num(err, nan=np.nan, posinf=np.nan, neginf=np.nan)
 
 
-def get_logger(name: str, stdout: bool = True, log_file: str | Path = None,
+def get_logger(name: str, stdout: bool = True, log_file: str | Path | None = None,
                level: int = logging.INFO) -> logging.Logger:
     """Return a file/stdout logger with the given name.
 

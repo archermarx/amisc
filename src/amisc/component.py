@@ -175,7 +175,7 @@ class MiscTree(UserDict, Serializable):
     """
     SERIALIZER_KEY = 'state_serializer'
 
-    def __init__(self, data: dict = None, **kwargs):
+    def __init__(self, data: dict | None = None, **kwargs):
         data_dict = data or {}
         if isinstance(data_dict, MiscTree):
             data_dict = data_dict.data
@@ -269,7 +269,7 @@ class MiscTree(UserDict, Serializable):
         except Exception:
             return default
 
-    def update(self, data_dict: dict = None, **kwargs):
+    def update(self, data_dict: dict| None = None, **kwargs):
         """Force `dict.update()` through the validator."""
         data_dict = data_dict or dict()
         data_dict.update(kwargs)
@@ -805,9 +805,9 @@ class Component(BaseModel, Serializable):
             raise e
 
     def call_model(self, inputs: dict | Dataset,
-                   model_fidelity: Literal['best', 'worst'] | tuple | list = None,
-                   output_path: str | Path = None,
-                   executor: Executor = None,
+                   model_fidelity: Literal['best', 'worst'] | tuple | list | None = None,
+                   output_path: str | Path | None = None,
+                   executor: Executor | None = None,
                    track_costs: bool = False,
                    **kwds) -> Dataset:
         """Wrapper function for calling the underlying component model.
@@ -1037,12 +1037,12 @@ class Component(BaseModel, Serializable):
         return output_dict
 
     def predict(self, inputs: dict | Dataset,
-                use_model: Literal['best', 'worst'] | tuple = None,
-                model_dir: str | Path = None,
+                use_model: Literal['best', 'worst'] | tuple | None = None,
+                model_dir: str | Pat | Noneh = None,
                 index_set: Literal['train', 'test'] | IndexSet = 'test',
-                misc_coeff: MiscTree = None,
+                misc_coeff: MiscTree | None = None,
                 incremental: bool = False,
-                executor: Executor = None,
+                executor: Executor | None = None,
                 **kwds) -> Dataset:
         """Evaluate the MISC surrogate approximation at new inputs `x`.
 
@@ -1134,7 +1134,7 @@ class Component(BaseModel, Serializable):
         return format_outputs(outputs, loop_shape)
 
     def update_misc_coeff(self, new_indices: IndexSet, index_set: Literal['test', 'train'] | IndexSet = 'train',
-                          misc_coeff: MiscTree = None):
+                          misc_coeff: MiscTree | None = None):
         """Update MISC coefficients incrementally resulting from the addition of new indices to an index set.
 
         !!! Warning "Incremental updates"
@@ -1165,8 +1165,8 @@ class Component(BaseModel, Serializable):
                         misc_coeff[old_alpha, old_beta] = 0
                     misc_coeff[old_alpha, old_beta] += (-1) ** int(np.sum(np.abs(diff)))
 
-    def activate_index(self, alpha: MultiIndex, beta: MultiIndex, model_dir: str | Path = None,
-                       executor: Executor = None, weight_fcns: dict[str, callable] | Literal['pdf'] | None = 'pdf'):
+    def activate_index(self, alpha: MultiIndex, beta: MultiIndex, model_dir: str | Path | None = None,
+                       executor: Executor | None = None, weight_fcns: dict[str, Callable] | Literal['pdf'] | None = 'pdf'):
         """Add a multi-index to the active set and all neighbors to the candidate set.
 
         !!! Warning
@@ -1309,9 +1309,9 @@ class Component(BaseModel, Serializable):
 
     def gradient(self, inputs: dict | Dataset,
                  index_set: Literal['train', 'test'] | IndexSet = 'test',
-                 misc_coeff: MiscTree = None,
+                 misc_coeff: MiscTree | None = None,
                  derivative: Literal['first', 'second'] = 'first',
-                 executor: Executor = None) -> Dataset:
+                 executor: Executor | None = None) -> Dataset | None:
         """Evaluate the Jacobian or Hessian of the MISC surrogate approximation at new `inputs`, i.e.
         the first or second derivatives, respectively.
 
@@ -1385,7 +1385,7 @@ class Component(BaseModel, Serializable):
                 return True
         return False
 
-    def set_logger(self, log_file: str | Path = None, stdout: bool = None, logger: logging.Logger = None,
+    def set_logger(self, log_file: str | Path | None = None, stdout: bool | None = None, logger: logging.Logger | None = None,
                    level: int = logging.INFO):
         """Set a new `logging.Logger` object.
 
@@ -1404,7 +1404,7 @@ class Component(BaseModel, Serializable):
                         break
         self._logger = logger or get_logger(self.name, log_file=log_file, stdout=stdout, level=level)
 
-    def update_model(self, new_model: callable = None, model_kwargs: dict = None, **kwargs):
+    def update_model(self, new_model: Callable  | None = None, model_kwargs: dict | None = None, **kwargs):
         """Update the underlying component model or its kwargs."""
         if new_model is not None:
             self.model = new_model
@@ -1475,8 +1475,8 @@ class Component(BaseModel, Serializable):
         self._model_end_time = -1.0
         self.clear_cache()
 
-    def serialize(self, keep_yaml_objects: bool = False, serialize_args: dict[str, tuple] = None,
-                  serialize_kwargs: dict[str: dict] = None) -> dict:
+    def serialize(self, keep_yaml_objects: bool = False, serialize_args: dict[str, tuple] | None = None,
+                  serialize_kwargs: dict[str, dict] | None = None) -> dict:
         """Convert to a `dict` with only standard Python types as fields and values.
 
         :param keep_yaml_objects: whether to keep `Variable` or other yaml serializable objects instead of
@@ -1525,8 +1525,8 @@ class Component(BaseModel, Serializable):
         return d
 
     @classmethod
-    def deserialize(cls, serialized_data: dict, search_paths: list[str | Path] = None,
-                    search_keys: list[str] = None) -> Component:
+    def deserialize(cls, serialized_data: dict, search_paths: list[str | Path] | None = None,
+                    search_keys: list[str] | None = None) -> Component:
         """Return a `Component` from `data`. Let pydantic handle field validation and conversion. If any component
         data has been saved to file and the save file doesn't exist, then the loader will search for the file
         in the current working directory and any additional search paths provided.

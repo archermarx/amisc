@@ -69,7 +69,7 @@ class LinearState(InterpolatorState, Base64Serializable):
     """
     x_vars: list[str] = field(default_factory=list)
     y_vars: list[str] = field(default_factory=list)
-    regressor: Pipeline = None
+    regressor: Pipeline | None = None
 
     def __eq__(self, other):
         if isinstance(other, LinearState):
@@ -92,7 +92,7 @@ class GPRState(InterpolatorState, Base64Serializable):
     """
     x_vars: list[str] = field(default_factory=list)
     y_vars: list[str] = field(default_factory=list)
-    regressor: Pipeline = None
+    regressor: Pipeline | None = None
 
     def __eq__(self, other):
         if isinstance(other, GPRState):
@@ -550,7 +550,7 @@ class Linear(Interpolator, StringSerializable):
     :ivar polynomial_opts: options to pass to the `PolynomialFeatures` constructor (e.g. 'degree', 'include_bias').
     """
     regressor: str = 'Ridge'
-    scaler: str = None
+    scaler: str | None = None
     regressor_opts: dict = field(default_factory=dict)
     scaler_opts: dict = field(default_factory=dict)
     polynomial_opts: dict = field(default_factory=lambda: {'degree': 1, 'include_bias': False})
@@ -654,7 +654,7 @@ class GPR(Interpolator, StringSerializable):
     :ivar regressor_opts: options to pass to the `GaussianProcessRegressor` constructor
                           (see [scikit-learn](https://scikit-learn.org/stable/) documentation).
     """
-    scaler: str = None
+    scaler: str | None = None
     kernel: str | list = 'RBF'
     scaler_opts: dict = field(default_factory=dict)
     kernel_opts: dict = field(default_factory=dict)

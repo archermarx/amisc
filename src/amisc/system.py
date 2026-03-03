@@ -66,7 +66,7 @@ __all__ = ['TrainHistory', 'System']
 class TrainHistory(UserList, Serializable):
     """Stores the training history of a system surrogate as a list of `TrainIteration` objects."""
 
-    def __init__(self, data: list = None):
+    def __init__(self, data: list | None = None):
         data = data or []
         super().__init__(self._validate_data(data))
 
@@ -217,7 +217,7 @@ class System(BaseModel, Serializable):
     name: Annotated[str, Field(default_factory=lambda: "System_" + "".join(random.choices(string.digits, k=3)))]
     components: Callable | Component | list[Callable | Component]
     train_history: list[dict] | TrainHistory = TrainHistory()
-    amisc_version: str = None
+    amisc_version: str | None = None
 
     _root_dir: Optional[str]
     _logger: Optional[logging.Logger] = None
@@ -429,7 +429,7 @@ class System(BaseModel, Serializable):
             self._root_dir = None
             self.set_logger(log_file=None)
 
-    def set_logger(self, log_file: str | Path | bool = None, stdout: bool = None, logger: logging.Logger = None,
+    def set_logger(self, log_file: str | Path | bool | None = None, stdout: bool | None = None, logger: logging.Logger | None = None,
                    level: int = logging.INFO):
         """Set a new `logging.Logger` object.
 
@@ -471,9 +471,9 @@ class System(BaseModel, Serializable):
                       component: str = 'System',
                       normalize: bool = True,
                       use_pdf: bool | str | list[str] = False,
-                      include: str | list[str] = None,
-                      exclude: str | list[str] = None,
-                      nominal: dict[str, float] = None) -> Dataset:
+                      include: str | list[str] | None = None,
+                      exclude: str | list[str] | None = None,
+                      nominal: dict[str, float]  | None= None) -> Dataset:
         """Return samples of the inputs according to provided options. Will return samples in the
         normalized/compressed space of the surrogate by default. See [`to_model_dataset`][amisc.utils.to_model_dataset]
         to convert the samples to be usable by the true model directly.
@@ -611,19 +611,19 @@ class System(BaseModel, Serializable):
         raise NotImplementedError
 
     @_save_on_error
-    def fit(self, targets: list = None,
+    def fit(self, targets: list | None = None,
             num_refine: int = 100,
             max_iter: int = 20,
             max_tol: float = 1e-3,
             runtime_hr: float = 1.,
             estimate_bounds: bool = False,
             update_bounds: bool = True,
-            test_set: tuple | str | Path = None,
-            start_test_check: int = None,
+            test_set: tuple | str | Path | None = None,
+            start_test_check: int | None = None,
             save_interval: int = 0,
             plot_interval: int = 1,
             cache_interval: int = 0,
-            executor: Executor = None,
+            executor: Executor | None = None,
             weight_fcns: dict[str, callable] | Literal['pdf'] | None = 'pdf'):
         """Train the system surrogate adaptively by iterative refinement until an end condition is met.
 
@@ -828,8 +828,8 @@ class System(BaseModel, Serializable):
 
         return perf
 
-    def refine(self, targets: list = None, num_refine: int = 100, update_bounds: bool = True, executor: Executor = None,
-               weight_fcns: dict[str, callable] | Literal['pdf'] | None = 'pdf') -> TrainIteration:
+    def refine(self, targets: list | None = None, num_refine: int = 100, update_bounds: bool = True, executor: Executor | None = None,
+               weight_fcns: dict[str, Callable] | Literal['pdf'] | None = 'pdf') -> TrainIteration:
         """Perform a single adaptive refinement step on the system surrogate.
 
         :param targets: list of system output variables to focus refinement on, use all outputs if not specified
@@ -951,16 +951,16 @@ class System(BaseModel, Serializable):
                 max_fpi_iter: int = 100,
                 anderson_mem: int = 10,
                 fpi_tol: float = 1e-10,
-                use_model: str | tuple | dict = None,
-                model_dir: str | Path = None,
+                use_model: str | tuple | dict | None = None,
+                model_dir: str | Path | None = None,
                 verbose: bool = False,
-                index_set: dict[str: IndexSet | Literal['train', 'test']] = 'test',
-                misc_coeff: dict[str: MiscTree] = None,
+                index_set: dict[str, IndexSet | Literal['train', 'test']] | str = 'test',
+                misc_coeff: dict[str, MiscTree] | None = None,
                 normalized_inputs: bool = True,
-                incremental: dict[str, bool] = False,
-                targets: list[str] = None,
-                executor: Executor = None,
-                var_shape: dict[str, tuple] = None) -> Dataset:
+                incremental: dict[str, bool] | bool = False,
+                targets: list[str] | None = None,
+                executor: Executor | None= None,
+                var_shape: dict[str, tuple] | None = None) -> Dataset:
         """Evaluate the system surrogate at inputs `x`. Return `y = system(x)`.
 
         !!! Warning "Computing the true model with feedback loops"
@@ -1369,7 +1369,7 @@ class System(BaseModel, Serializable):
         """Restore the unpickleable attributes from `buffer` after unpickling."""
         self.set_logger(log_file=buffer.get('log_file', None), stdout=buffer.get('log_stdout', None))
 
-    def _get_test_set(self, test_set: str | Path | tuple = None) -> tuple:
+    def _get_test_set(self, test_set: str | Path | tuple | None = None) -> tuple:
         """Try to load a test set from the root directory if it exists."""
         if isinstance(test_set, tuple):
             return test_set  # (xtest, ytest)
@@ -1388,7 +1388,7 @@ class System(BaseModel, Serializable):
 
             return ret
 
-    def _save_test_set(self, test_set: tuple = None):
+    def _save_test_set(self, test_set: tuple | None = None):
         """Save the test set to the root directory if possible."""
         if self.root_dir is not None and test_set is not None:
             test_file = self.root_dir / 'test_set.pkl'
@@ -1396,7 +1396,7 @@ class System(BaseModel, Serializable):
                 with open(test_file, 'wb') as fd:
                     pickle.dump({'test_set': test_set}, fd)
 
-    def save_to_file(self, filename: str, save_dir: str | Path = None, dumper=None):
+    def save_to_file(self, filename: str, save_dir: str | Path | None = None, dumper=None):
         """Save surrogate to file. Defaults to `root/surrogates/filename.yml` with the default yaml encoder.
 
         :param filename: the name of the save file
@@ -1411,7 +1411,7 @@ class System(BaseModel, Serializable):
         encoder.dump(self, Path(save_dir) / filename)
 
     @staticmethod
-    def load_from_file(filename: str | Path, root_dir: str | Path = None, loader=None):
+    def load_from_file(filename: str | Path, root_dir: str | Path | None = None, loader=None):
         """Load surrogate from file. Defaults to yaml loading. Tries to infer `amisc` directory structure.
 
         :param filename: the name of the load file
@@ -1442,16 +1442,16 @@ class System(BaseModel, Serializable):
             comp.clear()
         self.train_history.clear()
 
-    def plot_slice(self, inputs: list[str] = None,
-                   outputs: list[str] = None,
+    def plot_slice(self, inputs: list[str] | None = None,
+                   outputs: list[str] | None = None,
                    num_steps: int = 20,
                    show_surr: bool = True,
-                   show_model: str | tuple | list = None,
-                   save_dir: str | Path = None,
-                   executor: Executor = None,
-                   nominal: dict[str: float] = None,
+                   show_model: str | tuple | list | None = None,
+                   save_dir: str | Path | None = None,
+                   executor: Executor | None = None,
+                   nominal: dict[str, float] | None = None,
                    random_walk: bool = False,
-                   from_file: str | Path = None,
+                   from_file: str | Path | None = None,
                    subplot_size_in: float = 3.):
         """Helper function to plot 1d slices of the surrogate and/or model outputs over the inputs. A single
         "slice" works by smoothly stepping from the lower bound of an input to its upper bound, while holding all other

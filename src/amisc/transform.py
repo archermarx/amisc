@@ -118,7 +118,7 @@ class Transform(ABC):
 
         return transforms
 
-    def transform(self, x: ArrayLike, inverse: bool = False, transform_args: tuple = None) -> ArrayLike:
+    def transform(self, x: ArrayLike, inverse: bool = False, transform_args: tuple | None = None) -> ArrayLike:
         """Transform the given values `x`. This wrapper function handles the input type and tries to
          return the transformed values in the same type.
 

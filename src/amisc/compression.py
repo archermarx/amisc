@@ -56,7 +56,7 @@ class Compression(PickleSerializable, ABC):
     """
     fields: list[str] = field(default_factory=list)
     method: str = 'svd'
-    coords: np.ndarray = None  # (num_pts, dim)
+    coords: np.ndarray | None = None  # (num_pts, dim)
     interpolate_method: str = 'rbf'
     interpolate_opts: dict = field(default_factory=dict)
     _map_computed: bool = False
@@ -323,11 +323,11 @@ class SVD(Compression):
     :ivar energy_tol: the energy tolerance of the SVD decomposition
     :ivar reconstruction_tol: the reconstruction error tolerance of the SVD decomposition
     """
-    data_matrix: np.ndarray = None          # (dof, num_samples)
-    projection_matrix: np.ndarray = None    # (dof, rank)
-    rank: int = None
-    energy_tol: float = None
-    reconstruction_tol: float = None
+    data_matrix: np.ndarray | None = None          # (dof, num_samples)
+    projection_matrix: np.ndarray | None = None    # (dof, rank)
+    rank: int | None = None
+    energy_tol: float | None = None
+    reconstruction_tol: float | None = None
 
     def __post_init__(self):
         """Compute the SVD if the data matrix is provided."""
@@ -335,8 +335,8 @@ class SVD(Compression):
             self.compute_map(data_matrix, rank=self.rank, energy_tol=self.energy_tol,
                              reconstruction_tol=self.reconstruction_tol)
 
-    def compute_map(self, data_matrix: np.ndarray | dict, rank: int = None, energy_tol: float = None,
-                    reconstruction_tol: float = None):
+    def compute_map(self, data_matrix: np.ndarray | dict, rank: int | None = None, energy_tol: float | None = None,
+                    reconstruction_tol: float | None = None):
         """Compute the SVD compression map from the data matrix. Recall that `dof` is the total number of degrees of
         freedom, equal to the number of grid points `num_pts` times the number of quantities of interest `num_qoi`
         at each grid point.

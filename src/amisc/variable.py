@@ -344,7 +344,7 @@ class Variable(BaseModel, Serializable):
         else:
             return np.ones(x.shape)  # No pdf if no dist is specified
 
-    def sample(self, shape: tuple | int, nominal: float | np.ndarray = None) -> np.ndarray:
+    def sample(self, shape: tuple | int, nominal: float | np.ndarray | None = None) -> np.ndarray:
         """Draw samples from this `Variable's` distribution. Just returns the nominal value of the given shape if
         this `Variable` has no distribution.
 
@@ -430,7 +430,7 @@ class Variable(BaseModel, Serializable):
         """Alias for `normalize(denorm=True)`. See `normalize` for more details."""
         return self.normalize(values, denorm=True)
 
-    def compress(self, values: CompressionData, coords: np.ndarray = None,
+    def compress(self, values: CompressionData, coords: np.ndarray | None = None,
                  reconstruct: bool = False) -> CompressionData:
         """Compress or reconstruct field quantity values using this `Variable's` compression info.
 
@@ -514,7 +514,7 @@ class Variable(BaseModel, Serializable):
         return d
 
     @classmethod
-    def deserialize(cls, data: dict, search_paths: list[str | Path] = None) -> Variable:
+    def deserialize(cls, data: dict, search_paths: list[str | Path] | None = None) -> Variable:
         """Convert a `dict` to a `Variable` object. Let `pydantic` handle validation and conversion of fields.
 
         :param data: the `dict` to convert to a `Variable`
@@ -562,7 +562,7 @@ class VariableList(OrderedDict, Serializable):
     """
     yaml_tag = '!VariableList'
 
-    def __init__(self, data: list[Variable] | Variable | OrderedDict | dict = None, **kwargs):
+    def __init__(self, data: list[Variable] | Variable | OrderedDict | dict | None = None, **kwargs):
         """Initialize a collection of `Variable` objects."""
         super().__init__()
         self.update(data, **kwargs)
@@ -634,7 +634,7 @@ class VariableList(OrderedDict, Serializable):
                 pdf_fcns[var.name] = _get_pdf(var, norm)
         return pdf_fcns
 
-    def update(self, data: list[Variable | str] | str | Variable | OrderedDict | dict = None, **kwargs):
+    def update(self, data: list[Variable | str] | str | Variable | OrderedDict | dict | None = None, **kwargs):
         """Update from a list or dict of `Variable` objects, or from `key=value` pairs."""
         if data:
             if isinstance(data, OrderedDict | dict):
