@@ -60,8 +60,9 @@ from amisc.utils import (
 )
 from amisc.variable import VariableList
 
-__all__ = ['TrainHistory', 'System']
+PathLike = str | Path
 
+__all__ = ['TrainHistory', 'System']
 
 class TrainHistory(UserList, Serializable):
     """Stores the training history of a system surrogate as a list of `TrainIteration` objects."""
@@ -218,6 +219,8 @@ class System(BaseModel, Serializable):
     components: Callable | Component | list[Callable | Component]
     train_history: list[dict] | TrainHistory = TrainHistory()
     amisc_version: str | None = None
+    timestamp_prefix: str = "amisc_"
+    create_subdirs: bool = True
 
     _root_dir: Optional[str]
     _logger: Optional[logging.Logger] = None
@@ -386,7 +389,7 @@ class System(BaseModel, Serializable):
         return Path(self._root_dir) if self._root_dir is not None else None
 
     @root_dir.setter
-    def root_dir(self, root_dir: str | Path):
+    def root_dir(self, root_dir: PathLike | None):
         """Set the root directory for all build products. If `root_dir` is `None`, then no products will be saved.
         Otherwise, log files, model outputs, surrogate files, etc. will be saved under this directory.
 
@@ -397,16 +400,23 @@ class System(BaseModel, Serializable):
 
         :param root_dir: the root directory for all build products
         """
+        # TODO: don't create dirs until we do something!
+
         if root_dir is not None:
-            parts = Path(root_dir).resolve().parts
-            if parts[-1].startswith('amisc_'):
-                self._root_dir = Path(root_dir).resolve().as_posix()
+            root_dir = Path(root_dir).resolve()
+            
+            parts = root_dir.parts
+            if parts[-1].startswith(self.timestamp_prefix) or not self.create_subdirs:
+                self._root_dir = root_dir.resolve()
+                assert self.root_dir is not None
                 if not self.root_dir.is_dir():
-                    os.mkdir(self.root_dir)
-            else:
-                root_dir = Path(root_dir) / ('amisc_' + self.timestamp())
+                    os.makedirs(self.root_dir, exist_ok=True)
+            elif self.create_subdirs:
+                root_dir = root_dir / (f"{self.timestamp_prefix}_{self.timestamp()}")
                 os.mkdir(root_dir)
-                self._root_dir = Path(root_dir).resolve().as_posix()
+                self._root_dir = root_dir
+
+            assert self.root_dir is not None
 
             log_file = None
             if not (pth := self.root_dir / 'surrogates').is_dir():
@@ -422,7 +432,7 @@ class System(BaseModel, Serializable):
                     log_file = (self.root_dir / f).resolve().as_posix()
                     break
             if log_file is None:
-                log_file = (self.root_dir / f'amisc_{self.timestamp()}.log').resolve().as_posix()
+                log_file = (self.root_dir / f'{self.timestamp_prefix}_{self.timestamp()}.log').resolve().as_posix()
             self.set_logger(log_file=log_file)
 
         else:
@@ -1409,9 +1419,9 @@ class System(BaseModel, Serializable):
         if Path(save_dir) == self.root_dir:
             save_dir = self.root_dir / 'surrogates'
         encoder.dump(self, Path(save_dir) / filename)
-
+        
     @staticmethod
-    def load_from_file(filename: str | Path, root_dir: str | Path | None = None, loader=None):
+    def load_from_file(filename: PathLike, root_dir: PathLike  | None= None, loader=None, timestamp_prefix="amisc_"):
         """Load surrogate from file. Defaults to yaml loading. Tries to infer `amisc` directory structure.
 
         :param filename: the name of the load file
@@ -1421,21 +1431,22 @@ class System(BaseModel, Serializable):
         from amisc import YamlLoader
         encoder = loader or YamlLoader
         system = encoder.load(filename)
+        system.timestamp_prefix=timestamp_prefix
         root_dir = root_dir or system.root_dir
 
         # Try to infer amisc_root/surrogates/iter/filename structure
         if root_dir is None:
             parts = Path(filename).resolve().parts
-            if len(parts) > 1 and parts[-2].startswith('amisc_'):
+            if len(parts) > 1 and parts[-2].startswith(timestamp_prefix):
                 root_dir = Path(filename).resolve().parent
-            elif len(parts) > 2 and parts[-3].startswith('amisc_'):
+            elif len(parts) > 2 and parts[-3].startswith(timestamp_prefix):
                 root_dir = Path(filename).resolve().parent.parent
-            elif len(parts) > 3 and parts[-4].startswith('amisc_'):
+            elif len(parts) > 3 and parts[-4].startswith(timestamp_prefix):
                 root_dir = Path(filename).resolve().parent.parent.parent
 
         system.root_dir = root_dir
         return system
-
+    
     def clear(self):
         """Clear all surrogate model data and reset the system."""
         for comp in self.components:
