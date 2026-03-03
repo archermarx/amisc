@@ -388,7 +388,7 @@ class Component(BaseModel, Serializable):
     # Configuration
     serializers: Optional[ComponentSerializers] = None
     name: Optional[str] = None
-    model: str | Callable[[dict | Dataset, ...], dict | Dataset]
+    model: str | Callable[..., dict | Dataset]
     model_kwargs: str | dict | ModelKwargs = {}
     inputs: _VariableLike
     outputs: _VariableLike
