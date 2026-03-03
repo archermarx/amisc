@@ -18,7 +18,7 @@ import random
 import string
 from collections import OrderedDict
 from pathlib import Path
-from typing import ClassVar, Optional, Union
+from typing import ClassVar, Optional, Union, overload
 
 import numpy as np
 import yaml
@@ -340,6 +340,7 @@ class Variable(BaseModel, Serializable):
         :returns: the PDF evaluations at `x`
         """
         if dist := self.distribution:
+            assert isinstance(dist, Distribution)
             return dist.pdf(x)
         else:
             return np.ones(x.shape)  # No pdf if no dist is specified
@@ -354,21 +355,31 @@ class Variable(BaseModel, Serializable):
         """
         if isinstance(shape, int):
             shape = (shape, )
-        if nominal is None:
-            nominal = self.get_nominal()
+
+        nominal_val = self.get_nominal() if nominal is None else nominal
 
         if dist := self.distribution:
-            return dist.sample(shape, nominal)
+            assert isinstance(dist, Distribution)
+            return dist.sample(shape, np.array(nominal_val))
         else:
-            # Variable's with no distribution
-            if nominal is None:
+            # Variables with no distribution
+            if nominal_val is None:
                 raise ValueError(f'Cannot sample "{self.name}" with no dist or nominal value specified.')
-            elif isinstance(nominal, list | np.ndarray):
-                return np.ones(shape + (len(nominal),)) * np.atleast_1d(nominal)  # For field quantities
+            elif isinstance(nominal_val, list | np.ndarray):
+                return np.ones(shape + (len(nominal_val),)) * np.atleast_1d(nominal_val)  # For field quantities
             else:
-                return np.ones(shape) * nominal
+                return np.ones(shape) * nominal_val
+            
+    @overload
+    def normalize(self, values: None, denorm: bool = False) -> None: ...
 
-    def normalize(self, values: ArrayLike, denorm: bool = False) -> ArrayLike | None:
+    @overload
+    def normalize(self, values: float, denorm: bool = False) -> float: ...
+
+    @overload
+    def normalize(self, values: ArrayLike, denorm: bool = False) -> ArrayLike: ...
+
+    def normalize(self, values: float | ArrayLike | None, denorm: bool = False) -> float | ArrayLike | None:
         """Normalize `values` based on this `Variable's` `norm` method(s). See `Transform` for available norm methods.
 
         !!! Note

@@ -624,7 +624,7 @@ class System(BaseModel, Serializable):
             plot_interval: int = 1,
             cache_interval: int = 0,
             executor: Executor | None = None,
-            weight_fcns: dict[str, callable] | Literal['pdf'] | None = 'pdf'):
+            weight_fcns: dict[str, Callable] | Literal['pdf'] | None = 'pdf'):
         """Train the system surrogate adaptively by iterative refinement until an end condition is met.
 
         :param targets: list of system output variables to focus refinement on, use all outputs if not specified
