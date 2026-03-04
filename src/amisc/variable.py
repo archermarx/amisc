@@ -88,7 +88,7 @@ class Variable(BaseModel, Serializable[dict]):
     yaml_tag: ClassVar[str] = u'!Variable'
     model_config = ConfigDict(validate_assignment=True, arbitrary_types_allowed=True, validate_default=True)
 
-    name: Optional[str] = None
+    name: str = ""
     nominal: Optional[float] = None
     description: Optional[str] = None
     units: Optional[str] = None
@@ -99,9 +99,9 @@ class Variable(BaseModel, Serializable[dict]):
     domain: Optional[str | tuple[float, float] | list] = None
     norm: Optional[_TransformLike] = None
 
-    def __init__(self, /, name=None, **kwargs):
+    def __init__(self, /, name="", **kwargs):
         # Try to set the variable name if instantiated as "x = Variable()"
-        if name is None:
+        if not name:
             name = _inspect_assignment('Variable')
         name = name or "X_" + "".join(random.choices(string.digits, k=3))
         super().__init__(name=name, **kwargs)
@@ -181,7 +181,7 @@ class Variable(BaseModel, Serializable[dict]):
     def _validate_norm(cls, norm: _TransformLike, info: ValidationInfo) -> list[Transform] | None:
         if norm is None:
             return norm
-        norm = Transform.from_string(norm)
+        tfs = Transform.from_string(norm)
 
         # Set default values for minmax and zscore transforms
         domain = info.data['domain']
@@ -189,7 +189,7 @@ class Variable(BaseModel, Serializable[dict]):
         if dist := info.data['distribution']:
             if isinstance(dist, Normal):
                 normal_args = dist.dist_args
-        for transform in norm:
+        for transform in tfs:
             if isinstance(transform, Minmax):
                 if domain and np.any(np.isnan(transform.transform_args[0:2])):
                     transform.update(lb=domain[0], ub=domain[1])
@@ -197,7 +197,7 @@ class Variable(BaseModel, Serializable[dict]):
                 if normal_args and np.any(np.isnan(transform.transform_args)):
                     transform.update(mu=normal_args[0], std=normal_args[1])
 
-        return norm
+        return tfs
 
     def __getitem__(self, item):
         return getattr(self, item)

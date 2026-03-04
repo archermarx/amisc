@@ -13,6 +13,7 @@ Transform objects can be converted easily to/from strings for serialization.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TypeAlias, overload
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -20,7 +21,7 @@ from numpy.typing import ArrayLike
 from amisc.utils import parse_function_string
 
 __all__ = ['Transform', 'Linear', 'Log', 'Minmax', 'Zscore']
-
+_TransformLike: TypeAlias = "str | Transform | list[str | Transform]"  # something that can be converted to a Transform
 
 class Transform(ABC):
     """A base class for all transformations.
@@ -36,8 +37,16 @@ class Transform(ABC):
         """Serialize a `Transform` object to string."""
         return f'{type(self).__name__}{self.transform_args}'
 
+    @overload
     @classmethod
-    def from_string(cls, transform_spec: str | list[str]) -> list[Transform] | None:
+    def from_string(cls, transform_spec: None) -> None: ...
+
+    @overload
+    @classmethod
+    def from_string(cls, transform_spec: _TransformLike) -> list[Transform]: ...
+
+    @classmethod
+    def from_string(cls, transform_spec: _TransformLike | None) -> list[Transform] | None:
         """Return a list of `Transforms` given a list of string specifications. Available transformations are:
 
         - **linear** — $x_{norm} = mx + b$ specified as `linear(m, b)` or `linear(slope=m, offset=b)`. `m=1, b=0` if not
