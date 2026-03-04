@@ -18,7 +18,7 @@ import random
 import string
 from collections import OrderedDict
 from pathlib import Path
-from typing import ClassVar, Optional, Union, overload
+from typing import ClassVar, Optional, Sequence, Union, overload
 
 import numpy as np
 import yaml
@@ -97,7 +97,7 @@ class Variable(BaseModel, Serializable[dict]):
     compression: Optional[Compression] = None
     distribution: Optional[Distribution] = None
     domain: Optional[tuple[float, float] | list[tuple[float, float]]] = None
-    norm: Optional[_TransformLike] = None
+    norm: Optional[list[Transform]] = None
 
     def __init__(self, /, name="", **kwargs):
         # Try to set the variable name if instantiated as "x = Variable()"
@@ -176,7 +176,7 @@ class Variable(BaseModel, Serializable[dict]):
 
         return domain
 
-    @field_validator('norm')
+    @field_validator('norm', mode='before')
     @classmethod
     def _validate_norm(cls, norm: _TransformLike, info: ValidationInfo) -> list[Transform] | None:
         if norm is None:
@@ -397,10 +397,11 @@ class Variable(BaseModel, Serializable[dict]):
         """
         if not self.norm or values is None:
             return values
-        if dist := self.distribution:
-            normal_dist = isinstance(dist, Normal)
+
+        if (dist := self.distribution) and isinstance(dist, Normal):
+            dist_args = self.distribution.dist_args
         else:
-            normal_dist = False
+            dist_args = []
 
         def _normalize_single(values, transform, inverse, domain, dist_args):
             """Do a single transform. Might need to override transform_args depending on the transform."""
@@ -413,7 +414,6 @@ class Variable(BaseModel, Serializable[dict]):
             return transform.transform(values, inverse=inverse, transform_args=transform_args)
 
         domain = self.get_domain() or ()
-        dist_args = self.distribution.dist_args if normal_dist else []
         if isinstance(domain, list):
             domain = ()  # For field quantities, domain is not used in normalization
 
@@ -648,14 +648,14 @@ class VariableList(OrderedDict, Serializable):
                 pdf_fcns[var.name] = _get_pdf(var, norm)
         return pdf_fcns
 
-    def update(self, data: list[Variable | str] | str | Variable | OrderedDict | dict | None = None, **kwargs):
+    def update(self, data: Sequence[Variable | str] | str | Variable | OrderedDict | dict | None = None, **kwargs): # type: ignore[override]
         """Update from a list or dict of `Variable` objects, or from `key=value` pairs."""
         if data:
             if isinstance(data, OrderedDict | dict):
                 for key, value in data.items():
                     self.__setitem__(key, value)
             else:
-                data = [data] if not isinstance(data, list | tuple) else data
+                data = [data] if not isinstance(data, Sequence | list | tuple) else data
                 for variable in data:
                     self.__setitem__(str(variable), variable)
         if kwargs:
