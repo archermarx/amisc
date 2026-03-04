@@ -43,20 +43,23 @@ class Distribution(ABC):
     def __repr__(self):
         return self.__str__()
 
-    def domain(self, dist_args: tuple | None = None) -> tuple:
+    def domain(self, dist_args: tuple | None = None) -> tuple | None:
         """Return the domain of this distribution. Defaults to `dist_args`
 
         :param dist_args: overrides `self.dist_args`
         """
         return dist_args or self.dist_args
 
-    def nominal(self, dist_args: tuple | None = None) -> float:
+    def nominal(self, dist_args: tuple | None = None) -> float | None:
         """Return the nominal value of this distribution. Defaults to middle of domain.
 
         :param dist_args: overrides `self.dist_args`
         """
-        lb, ub = self.domain(dist_args=dist_args)
-        return (lb + ub) / 2
+        if (domain := self.domain(dist_args=dist_args)) is not None:
+            lb, ub = domain
+            return (lb + ub) / 2
+        else:
+            return None
 
     @classmethod
     def from_string(cls, dist_string: str) -> Distribution | None:
@@ -157,7 +160,7 @@ class Uniform(Distribution):
 
     def sample(self, shape, nominal=None, dist_args=None):
         lb, ub = dist_args or self.dist_args
-        return np.random.rand(*shape) * (ub - lb) + lb
+        return np.random.random_sample(shape) * (ub - lb) + lb
 
     def pdf(self, x, dist_args=None):
         x = np.atleast_1d(x)
@@ -187,7 +190,7 @@ class LogUniform(Distribution):
     def sample(self, shape, nominal=None, dist_args=None):
         lb, ub = dist_args or self.dist_args
         c = 1 / np.log(self.base)
-        return self.base ** (np.random.rand(*shape) * c * (np.log(ub) - np.log(lb)) + c * np.log(lb))
+        return self.base ** (np.random.random_sample(shape) * c * (np.log(ub) - np.log(lb)) + c * np.log(lb))
 
     def pdf(self, x, dist_args=None):
         x = np.atleast_1d(x)
@@ -213,7 +216,7 @@ class Normal(Distribution):
 
     def sample(self, shape, nominal=None, dist_args=None):
         mu, std = dist_args or self.dist_args
-        return np.random.randn(*shape) * std + mu
+        return np.random.standard_normal(shape) * std + mu
 
     def pdf(self, x, dist_args=None):
         mu, std = dist_args or self.dist_args
@@ -243,7 +246,7 @@ class LogNormal(Distribution):
 
     def sample(self, shape, nominal=None, dist_args=None):
         mu, std = dist_args or self.dist_args
-        return self.base ** (np.random.randn(*shape) * std + mu)
+        return self.base ** (np.random.standard_normal(shape) * std + mu)
 
     def pdf(self, x, dist_args=None):
         mu, std = dist_args or self.dist_args
@@ -270,7 +273,7 @@ class Relative(Distribution):
             raise ValueError('Cannot sample relative distribution when no nominal value is provided.')
         dist_args = dist_args or self.dist_args
         tol = abs((dist_args[0] / 100) * nominal)
-        return np.random.rand(*shape) * 2 * tol - tol + nominal
+        return np.random.random_sample(shape) * 2 * tol - tol + nominal
 
     def pdf(self, x, dist_args=None):
         return np.ones(x.shape)
@@ -295,7 +298,7 @@ class Tolerance(Distribution):
             raise ValueError('Cannot sample tolerance distribution when no nominal value is provided.')
         dist_args = dist_args or self.dist_args
         tol = abs(dist_args[0])
-        return np.random.rand(*shape) * 2 * tol - tol + nominal
+        return np.random.random_sample(shape) * 2 * tol - tol + nominal
 
     def pdf(self, x, dist_args=None):
         return np.ones(np.atleast_1d(x).shape)
