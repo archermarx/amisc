@@ -31,6 +31,12 @@ class MultiIndex(tuple):
         else:
             return super().__new__(cls, map(int, __tuple))
 
+    def __getitem__(self, key):
+        result = super().__getitem__(key)
+        if isinstance(key, slice):
+            return MultiIndex(result)
+        return result
+
 
 class Dataset(_TypedDict, total=False):
     """Type hint for the input/output `dicts` of a call to `Component.model`. The keys are the variable names and the

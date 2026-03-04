@@ -799,9 +799,9 @@ class Component(BaseModel, Serializable):
             for a, _ in self.active_set.union(self.candidate_set):
                 if sum(a) > sum(alpha_best):
                     alpha_best = a
-            alpha = alpha_best
+            alpha = MultiIndex(alpha_best)
         elif alpha == 'worst':
-            alpha = (0,) * len(self.max_alpha)
+            alpha = MultiIndex((0,) * len(self.max_alpha))
 
         # Find the best beta for the given alpha
         if beta == 'best':
@@ -809,9 +809,9 @@ class Component(BaseModel, Serializable):
             for a, b in self.active_set.union(self.candidate_set):
                 if a == alpha and sum(b) > sum(beta_best):
                     beta_best = b
-            beta = beta_best
+            beta = MultiIndex(beta_best)
         elif beta == 'worst':
-            beta = (0,) * len(self.max_beta)
+            beta = MultiIndex((0,) * len(self.max_beta))
 
         try:
             if cached and (data := self._cache.get("training", {}).get(alpha, {}).get(beta)) is not None:
