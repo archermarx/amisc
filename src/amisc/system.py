@@ -36,7 +36,7 @@ from collections import ChainMap, UserList, deque
 from concurrent.futures import ALL_COMPLETED, Executor, wait
 from datetime import timezone
 from pathlib import Path
-from typing import Annotated, Callable, ClassVar, Literal, Optional
+from typing import Annotated, Callable, ClassVar, Literal, Optional, cast
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -103,7 +103,7 @@ class TrainHistory(UserList, Serializable):
         item['added_error'] = float(item['added_error'])
         item['overhead_s'] = float(item['overhead_s'])
         item['model_s'] = float(item['model_s'])
-        return item
+        return cast(TrainIteration, item)
 
     def append(self, item: dict):
         super().append(self._validate_item(item))
@@ -370,10 +370,15 @@ class System(BaseModel, Serializable):
 
     @property
     def logger(self) -> logging.Logger:
+        if self._logger is None:
+            _null = logging.getLogger('amisc.null')
+            if not _null.handlers:
+                _null.addHandler(logging.NullHandler())
+            return _null
         return self._logger
 
     @logger.setter
-    def logger(self, logger: logging.Logger):
+    def logger(self, logger: logging.Logger | None):
         self._logger = logger
         for comp in self.components:
             comp.logger = logger

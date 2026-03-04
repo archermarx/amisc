@@ -651,10 +651,15 @@ class Component(BaseModel, Serializable):
 
     @property
     def logger(self) -> logging.Logger:
+        if self._logger is None:
+            _null = logging.getLogger('amisc.null')
+            if not _null.handlers:
+                _null.addHandler(logging.NullHandler())
+            return _null
         return self._logger
 
     @logger.setter
-    def logger(self, logger: logging.Logger):
+    def logger(self, logger: logging.Logger | None):
         self._logger = logger
 
     def __eq__(self, other):
