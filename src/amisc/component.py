@@ -397,7 +397,7 @@ class Component(BaseModel, Serializable):
     serializers: Optional[ComponentSerializers] = None
     name: str = ""
     model: Callable[..., dict | Dataset]
-    model_kwargs: str | dict | ModelKwargs = {}
+    model_kwargs: ModelKwargs = ModelKwargs()
     inputs: VariableList
     outputs: VariableList
     model_fidelity: MultiIndex = MultiIndex()
@@ -624,15 +624,19 @@ class Component(BaseModel, Serializable):
     def _validate_model_evals(cls, model_evals: dict) -> dict:
         return {MultiIndex(key): int(value) for key, value in model_evals.items()}
 
-    @field_validator('model_kwargs', 'interpolator', 'training_data')
+    @field_validator('model_kwargs', 'interpolator', 'training_data', mode='before')
     @classmethod
     def _validate_arbitrary_serializable(cls, data: Any, info: ValidationInfo) -> Any:
         """Use the stored custom serialization classes to deserialize arbitrary objects."""
-        serializer = info.data.get('serializers').get(info.field_name).obj
+    
         if isinstance(data, Serializable):
             return data
-        else:
-            return serializer.deserialize(data)
+        
+        serializers = info.data.get('serializers') or {}
+        serializer_obj = serializers.get(info.field_name)
+        assert serializer_obj is not None, f"Serializer not found for {info.field_name}"
+        serializer = serializer_obj.obj
+        return serializer.deserialize(data)
 
     @property
     def xdim(self) -> int:
@@ -683,7 +687,7 @@ class Component(BaseModel, Serializable):
         else:
             return False
 
-    def _neighbors(self, alpha: MultiIndex, beta: MultiIndex, active_set: IndexSet = None, forward: bool = True):
+    def _neighbors(self, alpha: MultiIndex, beta: MultiIndex, active_set: IndexSet | None = None, forward: bool = True):
         """Get all possible forward or backward multi-index neighbors (distance of one unit vector away).
 
         :param alpha: the model fidelity index
@@ -778,7 +782,7 @@ class Component(BaseModel, Serializable):
 
     def get_training_data(self, alpha: Literal['best', 'worst'] | MultiIndex = 'best',
                           beta: Literal['best', 'worst'] | MultiIndex = 'best',
-                          y_vars: list = None,
+                          y_vars: list | None = None,
                           cached: bool = False) -> tuple[Dataset, Dataset]:
         """Get all training data for a given multi-index pair `(alpha, beta)`.
 
@@ -1438,7 +1442,7 @@ class Component(BaseModel, Serializable):
         new_kwargs = self.model_kwargs.data
         new_kwargs.update(model_kwargs or {})
         new_kwargs.update(kwargs)
-        self.model_kwargs = new_kwargs
+        self.model_kwargs = ModelKwargs(new_kwargs)
 
     def get_cost(self, alpha: MultiIndex, beta: MultiIndex) -> int:
         """Return the total cost (i.e. number of model evaluations) required to add $(\\alpha, \\beta)$ to the
