@@ -12,7 +12,7 @@ import copy
 import itertools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Callable
+from typing import Any, Callable, ClassVar
 
 import numpy as np
 from numpy.typing import ArrayLike

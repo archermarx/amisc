@@ -124,7 +124,11 @@ class Distribution(ABC):
             raise NotImplementedError(f'The distribution "{dist_string}" is not recognized.')
 
     @abstractmethod
-    def sample(self, shape: int | tuple, nominal: float | np.ndarray | None = None, dist_args: tuple | None = None) -> np.ndarray:
+    def sample(self, 
+        shape: int | tuple,
+        nominal: float | np.ndarray | None = None,
+        dist_args: tuple | None = None
+        ) -> np.ndarray:
         """Sample from the distribution.
 
         :param shape: shape of the samples to return

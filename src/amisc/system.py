@@ -439,8 +439,12 @@ class System(BaseModel, Serializable):
             self._root_dir = None
             self.set_logger(log_file=None)
 
-    def set_logger(self, log_file: str | Path | bool | None = None, stdout: bool | None = None, logger: logging.Logger | None = None,
-                   level: int = logging.INFO):
+    def set_logger(self, 
+        log_file: str | Path | bool | None = None, 
+        stdout: bool | None = None, 
+        logger: logging.Logger | None = None, 
+        level: int = logging.INFO
+        ):
         """Set a new `logging.Logger` object.
 
         :param log_file: log to this file if str or Path (defaults to whatever is currently set or empty);
@@ -838,7 +842,8 @@ class System(BaseModel, Serializable):
 
         return perf
 
-    def refine(self, targets: list | None = None, num_refine: int = 100, update_bounds: bool = True, executor: Executor | None = None,
+    def refine(self, targets: list | None = None, num_refine: int = 100, 
+               update_bounds: bool = True, executor: Executor | None = None,
                weight_fcns: dict[str, Callable] | Literal['pdf'] | None = 'pdf') -> TrainIteration:
         """Perform a single adaptive refinement step on the system surrogate.
 

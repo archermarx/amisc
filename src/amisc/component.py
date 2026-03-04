@@ -1038,7 +1038,7 @@ class Component(BaseModel, Serializable):
 
     def predict(self, inputs: dict | Dataset,
                 use_model: Literal['best', 'worst'] | tuple | None = None,
-                model_dir: str | Pat | Noneh = None,
+                model_dir: str | Path | None = None,
                 index_set: Literal['train', 'test'] | IndexSet = 'test',
                 misc_coeff: MiscTree | None = None,
                 incremental: bool = False,
@@ -1165,8 +1165,13 @@ class Component(BaseModel, Serializable):
                         misc_coeff[old_alpha, old_beta] = 0
                     misc_coeff[old_alpha, old_beta] += (-1) ** int(np.sum(np.abs(diff)))
 
-    def activate_index(self, alpha: MultiIndex, beta: MultiIndex, model_dir: str | Path | None = None,
-                       executor: Executor | None = None, weight_fcns: dict[str, Callable] | Literal['pdf'] | None = 'pdf'):
+    def activate_index(self, 
+        alpha: MultiIndex,
+        beta: MultiIndex, 
+        model_dir: str | Path | None = None,
+        executor: Executor | None = None,
+        weight_fcns: dict[str, Callable] | Literal['pdf'] | None = 'pdf'
+        ):
         """Add a multi-index to the active set and all neighbors to the candidate set.
 
         !!! Warning
@@ -1385,8 +1390,12 @@ class Component(BaseModel, Serializable):
                 return True
         return False
 
-    def set_logger(self, log_file: str | Path | None = None, stdout: bool | None = None, logger: logging.Logger | None = None,
-                   level: int = logging.INFO):
+    def set_logger(self,
+        log_file: str | Path | None = None,
+        stdout: bool | None = None,
+        logger: logging.Logger | None = None,
+        level: int = logging.INFO
+        ):
         """Set a new `logging.Logger` object.
 
         :param log_file: log to file (if provided)
