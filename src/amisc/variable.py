@@ -96,7 +96,7 @@ class Variable(BaseModel, Serializable[dict]):
     tex: Optional[str] = None
     compression: Optional[str | dict | Compression] = None
     distribution: Optional[str | Distribution] = None
-    domain: Optional[str | tuple[float, float] | list] = None
+    domain: Optional[tuple[float, float] | list[tuple[float, float]]] = None
     norm: Optional[_TransformLike] = None
 
     def __init__(self, /, name="", **kwargs):
@@ -143,7 +143,7 @@ class Variable(BaseModel, Serializable[dict]):
         else:
             raise ValueError(f'Cannot convert {dist} to a Distribution object.')
 
-    @field_validator('domain')
+    @field_validator('domain', mode='before')
     @classmethod
     def _validate_domain(cls, domain: list | tuple | str, info: ValidationInfo) -> tuple | list | None:
         """Try to extract the domain from the distribution if not provided, or convert from a string.
@@ -255,7 +255,7 @@ class Variable(BaseModel, Serializable[dict]):
 
         return nominal
 
-    def get_domain(self) -> tuple | list | None:
+    def get_domain(self) -> tuple[float, float] | list[tuple[float, float]] | None:
         """Return a tuple of the defined domain of this variable. Returns a list of domains for each latent dimension
         if this is a field quantity with compression.
 
@@ -375,6 +375,9 @@ class Variable(BaseModel, Serializable[dict]):
 
     @overload
     def normalize(self, values: float, denorm: bool = False) -> float: ...
+
+    @overload
+    def normalize(self, values: tuple, denorm: bool = False) -> tuple: ...
 
     @overload
     def normalize(self, values: ArrayLike, denorm: bool = False) -> ArrayLike: ...
