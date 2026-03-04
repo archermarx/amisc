@@ -16,7 +16,6 @@ from abc import ABC, abstractmethod
 from typing import TypeAlias, overload
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from amisc.utils import parse_function_string
 
@@ -139,7 +138,7 @@ class Transform(ABC):
     @overload
     def transform(self, x: np.ndarray, inverse: bool = ..., transform_args: tuple | None = ...) -> np.ndarray: ...
 
-    def transform(self, x: int | float | tuple | list | np.ndarray, inverse: bool = False, transform_args: tuple | None = None) -> float | list | tuple | np.ndarray:
+    def transform(self, x, inverse: bool = False, transform_args: tuple | None = None):
         """Transform the given values `x`. This wrapper function handles the input type and tries to
          return the transformed values in the same type.
 

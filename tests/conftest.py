@@ -6,6 +6,7 @@ from urllib.parse import quote
 # Make sure we don't try and open any interactive windows when running tests
 # This fixes some sporadic test failures on windows.
 import matplotlib
+
 matplotlib.use('Agg')
 
 import coverage
