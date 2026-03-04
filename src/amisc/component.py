@@ -388,25 +388,25 @@ class Component(BaseModel, Serializable):
     # Configuration
     serializers: Optional[ComponentSerializers] = None
     name: Optional[str] = None
-    model: str | Callable[..., dict | Dataset]
+    model: Callable[..., dict | Dataset]
     model_kwargs: str | dict | ModelKwargs = {}
-    inputs: _VariableLike
-    outputs: _VariableLike
-    model_fidelity: str | tuple = MultiIndex()
-    data_fidelity: str | tuple = MultiIndex()
-    surrogate_fidelity: str | tuple = MultiIndex()
+    inputs: VariableList
+    outputs: VariableList
+    model_fidelity: tuple = MultiIndex()
+    data_fidelity: tuple = MultiIndex()
+    surrogate_fidelity: tuple = MultiIndex()
     interpolator: Any | Interpolator = Lagrange()
     vectorized: bool = False
     call_unpacked: Optional[bool] = None  # If the model expects inputs/outputs like `func(x1, x2, ...)->(y1, y2, ...)
     ret_unpacked: Optional[bool] = None
 
     # Data storage/states for a MISC component
-    active_set: list | set | IndexSet = IndexSet()     # set of active (alpha, beta) multi-indices
-    candidate_set: list | set | IndexSet = IndexSet()  # set of candidate (alpha, beta) multi-indices
-    misc_states: dict | MiscTree = MiscTree()          # (alpha, beta) -> Interpolator state
-    misc_costs: dict | MiscTree = MiscTree()           # (alpha, beta) -> Added computational cost for this mult-index
-    misc_coeff_train: dict | MiscTree = MiscTree()     # (alpha, beta) -> c_[alpha, beta] (active set only)
-    misc_coeff_test: dict | MiscTree = MiscTree()      # (alpha, beta) -> c_[alpha, beta] (including candidate set)
+    active_set: IndexSet = IndexSet()     # set of active (alpha, beta) multi-indices
+    candidate_set: IndexSet = IndexSet()  # set of candidate (alpha, beta) multi-indices
+    misc_states: MiscTree = MiscTree()          # (alpha, beta) -> Interpolator state
+    misc_costs: MiscTree = MiscTree()           # (alpha, beta) -> Added computational cost for this mult-index
+    misc_coeff_train: MiscTree = MiscTree()     # (alpha, beta) -> c_[alpha, beta] (active set only)
+    misc_coeff_test: MiscTree = MiscTree()      # (alpha, beta) -> c_[alpha, beta] (including candidate set)
     model_costs: dict = dict()                         # Average single fidelity model costs (for each alpha)
     model_evals: dict = dict()                         # Number of evaluations for each alpha
     training_data: Any | TrainingData = SparseGrid()   # Stores surrogate training data
@@ -574,7 +574,7 @@ class Component(BaseModel, Serializable):
                 serializers[key] = YamlSerializable(obj=serializer)
         return serializers
 
-    @field_validator('model')
+    @field_validator('model', mode='before')
     @classmethod
     def _validate_model(cls, model: str | Callable) -> Callable:
         """Expects model as a callable or a yaml !!python/name string representation."""
@@ -583,7 +583,7 @@ class Component(BaseModel, Serializable):
         else:
             return model
 
-    @field_validator('inputs', 'outputs')
+    @field_validator('inputs', 'outputs', mode='before')
     @classmethod
     def _validate_variables(cls, variables: _VariableLike) -> VariableList:
         if isinstance(variables, VariableList):
@@ -591,17 +591,17 @@ class Component(BaseModel, Serializable):
         else:
             return VariableList.deserialize(variables)
 
-    @field_validator('model_fidelity', 'data_fidelity', 'surrogate_fidelity')
+    @field_validator('model_fidelity', 'data_fidelity', 'surrogate_fidelity', mode='before')
     @classmethod
     def _validate_indices(cls, multi_index) -> MultiIndex:
         return MultiIndex(multi_index)
 
-    @field_validator('active_set', 'candidate_set')
+    @field_validator('active_set', 'candidate_set', mode='before')
     @classmethod
     def _validate_index_set(cls, index_set) -> IndexSet:
         return IndexSet.deserialize(index_set)
 
-    @field_validator('misc_states', 'misc_costs', 'misc_coeff_train', 'misc_coeff_test')
+    @field_validator('misc_states', 'misc_costs', 'misc_coeff_train', 'misc_coeff_test', mode='before')
     @classmethod
     def _validate_misc_tree(cls, misc_tree) -> MiscTree:
         return MiscTree.deserialize(misc_tree)
