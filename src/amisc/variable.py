@@ -95,7 +95,7 @@ class Variable(BaseModel, Serializable[dict]):
     category: Optional[str] = None
     tex: Optional[str] = None
     compression: Optional[str | dict | Compression] = None
-    distribution: Optional[str | Distribution] = None
+    distribution: Optional[Distribution] = None
     domain: Optional[tuple[float, float] | list[tuple[float, float]]] = None
     norm: Optional[_TransformLike] = None
 
@@ -131,7 +131,7 @@ class Variable(BaseModel, Serializable[dict]):
             compression.fields = compression.fields or [info.data['name']]
             return compression
 
-    @field_validator('distribution')
+    @field_validator('distribution', mode='before')
     @classmethod
     def _validate_dist(cls, dist: str | Distribution) -> Distribution | None:
         if dist is None:
@@ -249,7 +249,7 @@ class Variable(BaseModel, Serializable[dict]):
         nominal = self.nominal
         if nominal is None:
             if dist := self.distribution:
-                nominal = float(dist.nominal())
+                nominal = dist.nominal()
             elif domain := self.get_domain():
                 nominal = [np.mean(d) for d in domain] if isinstance(domain, list) else float(np.mean(domain))
 
@@ -312,11 +312,11 @@ class Variable(BaseModel, Serializable[dict]):
         :param override: will simply set the domain to the new values rather than update against the current domain;
                          (default `False`)
         """
-        def _update_domain(domain, curr_domain):
+        def _update_domain(domain, curr_domain) -> tuple[float, float]:
             lb, ub = domain
             ret = (lb, ub) if override else (min(lb, curr_domain[0]) if curr_domain is not None else lb,
                                              max(ub, curr_domain[1]) if curr_domain is not None else ub)
-            return tuple(map(float, ret))
+            return (float(ret[0]), float(ret[1]))
 
         curr_domain = self.get_domain()
         if isinstance(domain, list):
