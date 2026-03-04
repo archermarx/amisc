@@ -94,7 +94,7 @@ class Variable(BaseModel, Serializable[dict]):
     units: Optional[str] = None
     category: Optional[str] = None
     tex: Optional[str] = None
-    compression: Optional[str | dict | Compression] = None
+    compression: Optional[Compression] = None
     distribution: Optional[Distribution] = None
     domain: Optional[tuple[float, float] | list[tuple[float, float]]] = None
     norm: Optional[_TransformLike] = None
