@@ -752,11 +752,26 @@ class VariableList(OrderedDict, Serializable):
         return merged_vars
 
     @classmethod
-    def deserialize(cls, serialized_data: dict | list[dict], search_paths=None) -> VariableList:
-        """Convert a `dict` or list of `dict` objects to a `VariableList` object. Let `pydantic` handle validation."""
-        if not isinstance(serialized_data, list):
-            serialized_data = [serialized_data]
-        return cls([Variable.deserialize(d, search_paths=search_paths) for d in serialized_data])
+    def deserialize(
+        cls, serialized_data: dict | str | Variable | Sequence[dict | str | Variable],
+        search_paths=None
+    ) -> VariableList:
+        """Convert a `dict`, `str`, `Variable`, or sequence of `dict`/`str`/`Variable` objects to a `VariableList`."""
+        # Convert single items to a list
+        if isinstance(serialized_data, (dict, str, Variable)):
+            items: Sequence[dict | str | Variable] = [serialized_data]
+        else:
+            items = serialized_data
+
+        result = []
+        for item in items:
+            if isinstance(item, Variable):
+                result.append(item)
+            elif isinstance(item, str):
+                result.append(Variable(name=item))
+            else:
+                result.append(Variable.deserialize(item, search_paths=search_paths))
+        return cls(result)
 
     @staticmethod
     def _yaml_representer(dumper: yaml.Dumper, data: VariableList) -> yaml.SequenceNode:

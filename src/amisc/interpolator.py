@@ -118,7 +118,7 @@ class Interpolator(Serializable, ABC):
 
     @abstractmethod
     def refine(self, beta: MultiIndex, training_data: tuple[Dataset, Dataset],
-               old_state: InterpolatorState, input_domains: dict[str, tuple]) -> InterpolatorState:
+               old_state: InterpolatorState | None, input_domains: dict[str, tuple]) -> InterpolatorState:
         """Refine the interpolator state with new training data.
 
         :param beta: a multi-index specifying the fidelity "levels" of the new interpolator state (starts at (0,... 0))
@@ -234,7 +234,7 @@ class Lagrange(Interpolator, StringSerializable):
         return extended_grids
 
     def refine(self, beta: MultiIndex, training_data: tuple[Dataset, Dataset],
-               old_state: LagrangeState, input_domains: dict[str, tuple]) -> LagrangeState:
+               old_state: LagrangeState | None, input_domains: dict[str, tuple]) -> LagrangeState:
         """Refine the interpolator state with new training data.
 
         :param beta: the refinement level indices for the interpolator (not used for `Lagrange`)
@@ -568,7 +568,7 @@ class Linear(Interpolator, StringSerializable):
                 raise ImportError(f"Scaler '{self.scaler}' not found in sklearn.preprocessing")
 
     def refine(self, beta: MultiIndex, training_data: tuple[Dataset, Dataset],
-               old_state: LinearState, input_domains: dict[str, tuple]) -> InterpolatorState:
+               old_state: LinearState | None, input_domains: dict[str, tuple]) -> InterpolatorState:
         """Train a new linear regression model.
 
         :param beta: if not empty, then the first element is the number of degrees to add to the polynomial features.
@@ -707,7 +707,7 @@ class GPR(Interpolator, StringSerializable):
                 raise ImportError(f"Scaler '{self.scaler}' not found in sklearn.preprocessing")
 
     def refine(self, beta: MultiIndex, training_data: tuple[Dataset, Dataset],
-               old_state: GPRState, input_domains: dict[str, tuple]) -> InterpolatorState:
+               old_state: GPRState | None, input_domains: dict[str, tuple]) -> InterpolatorState:
         """Train a new gaussian process regression model.
 
         :param beta: refinement level indices (Not used for 'GPR')

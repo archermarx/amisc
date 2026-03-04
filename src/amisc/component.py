@@ -33,12 +33,12 @@ import warnings
 from collections import UserDict, deque
 from concurrent.futures import ALL_COMPLETED, Executor, wait
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Iterable, Literal, Optional
+from typing import Any, Callable, ClassVar, Iterator, Literal, Optional, cast
 
 import numpy as np
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
-from typing_extensions import TypedDict
+from typing_extensions import Self, TypedDict
 
 from amisc.interpolator import Interpolator, InterpolatorState, Lagrange
 from amisc.serialize import PickleSerializable, Serializable, StringSerializable, YamlSerializable
@@ -66,12 +66,12 @@ class ModelKwargs(UserDict, Serializable):
     more complicated serialization/specification than a plain `dict`, then you can subclass from here.
     """
 
-    def serialize(self):
+    def serialize(self) -> dict | str:
         return self.data
 
     @classmethod
-    def deserialize(cls, serialized_data):
-        return ModelKwargs(**serialized_data)
+    def deserialize(cls, serialized_data) -> Self:
+        return cls(**serialized_data)
 
     @classmethod
     def from_dict(cls, config: dict) -> ModelKwargs:
@@ -125,8 +125,16 @@ class IndexSet(set, Serializable):
     def add(self, __element):
         super().add(self._validate_element(__element))
 
-    def update(self, __elements):
-        super().update([self._validate_element(ele) for ele in __elements])
+    def update(self, *s):
+        super().update([self._validate_element(ele) for iterable in s for ele in iterable])
+
+    def __iter__(self) -> Iterator[tuple[MultiIndex, MultiIndex]]:
+        return cast(Iterator[tuple[MultiIndex, MultiIndex]], super().__iter__())
+
+    def union(self, *others) -> 'IndexSet':
+        """Return the union of this set with others as an IndexSet."""
+        result = super().union(*others)
+        return IndexSet(result)
 
     @classmethod
     def _validate_element(cls, element):
@@ -143,7 +151,7 @@ class IndexSet(set, Serializable):
                 if isinstance(result, set):
                     result = cls(result)
                 return result
-            inner.fn_name = name
+            inner.__name__ = name
             setattr(cls, name, inner)
 
         for name in names:
@@ -263,13 +271,13 @@ class MiscTree(UserDict, Serializable):
         return (isinstance(key, tuple) and len(key) == 2 and isinstance(key[0], str | tuple)
                 and isinstance(key[1], str | tuple))
 
-    def get(self, key, default=None) -> float | InterpolatorState:
+    def get(self, key, default=None) -> float | InterpolatorState | None:
         try:
             return self.__getitem__(key)
         except Exception:
             return default
 
-    def update(self, data_dict: dict| None = None, **kwargs):
+    def update(self, data_dict: Any = None, **kwargs):
         """Force `dict.update()` through the validator."""
         data_dict = data_dict or dict()
         data_dict.update(kwargs)
@@ -309,7 +317,7 @@ class MiscTree(UserDict, Serializable):
         else:
             return False
 
-    def __iter__(self) -> Iterable[tuple[tuple, tuple, float | InterpolatorState]]:
+    def __iter__(self) -> Iterator[tuple[tuple, tuple, float | InterpolatorState]]:
         for alpha, beta_dict in self.data.items():
             if alpha == self.SERIALIZER_KEY:
                 continue
@@ -392,9 +400,9 @@ class Component(BaseModel, Serializable):
     model_kwargs: str | dict | ModelKwargs = {}
     inputs: VariableList
     outputs: VariableList
-    model_fidelity: tuple = MultiIndex()
-    data_fidelity: tuple = MultiIndex()
-    surrogate_fidelity: tuple = MultiIndex()
+    model_fidelity: MultiIndex = MultiIndex()
+    data_fidelity: MultiIndex = MultiIndex()
+    surrogate_fidelity: MultiIndex = MultiIndex()
     interpolator: Any | Interpolator = Lagrange()
     vectorized: bool = False
     call_unpacked: Optional[bool] = None  # If the model expects inputs/outputs like `func(x1, x2, ...)->(y1, y2, ...)
@@ -495,15 +503,15 @@ class Component(BaseModel, Serializable):
         inputs = inputs or []
         inputs = VariableList.merge(inputs, arg_inputs)
         if len(inputs) == 0:
-            inputs = inputs_inspect
+            inputs = VariableList.deserialize(inputs_inspect)
             call_unpacked = True
             if len(inputs) == 0:
                 raise ValueError("Could not infer input variables from model signature. Either your model does not "
                                  "accept input arguments or an error occurred during inspection.\nPlease provide the "
                                  "inputs directly as `Component(inputs=[...])` or fix the model signature.")
         if call_unpacked:
-            if not all([var == inputs_inspect[i] for i, var in enumerate(inputs)]):
-                warnings.warn(f"Mismatch between provided inputs: {inputs.values()} and inputs inferred from "
+            if not all([str(var) == str(inputs_inspect[i]) for i, var in enumerate(inputs)]):
+                warnings.warn(f"Mismatch between provided inputs: {inputs} and inputs inferred from "
                               f"model signature: {inputs_inspect}. This may cause unexpected results.")
         else:
             if len(inputs_inspect) > 1:
@@ -524,15 +532,15 @@ class Component(BaseModel, Serializable):
         outputs = outputs or []
         outputs = VariableList.merge(outputs, *arg_outputs)
         if len(outputs) == 0:
-            outputs = outputs_inspect
+            outputs = VariableList.deserialize(outputs_inspect)
             ret_unpacked = True
             if len(outputs) == 0:
                 raise ValueError("Could not infer output variables from model inspection. Either your model does not "
                                  "return outputs or an error occurred during inspection.\nPlease provide the "
                                  "outputs directly as `Component(outputs=[...])` or fix the model return values.")
         if ret_unpacked:
-            if not all([var == outputs_inspect[i] for i, var in enumerate(outputs)]):
-                warnings.warn(f"Mismatch between provided outputs: {outputs.values()} and outputs inferred "
+            if not all([str(var) == str(outputs_inspect[i]) for i, var in enumerate(outputs)]):
+                warnings.warn(f"Mismatch between provided outputs: {outputs} and outputs inferred "
                               f"from model: {outputs_inspect}. This may cause unexpected results.")
         else:
             if len(outputs_inspect) > 1:
@@ -642,7 +650,7 @@ class Component(BaseModel, Serializable):
     @property
     def max_beta(self) -> MultiIndex:
         """The maximum surrogate fidelity multi-index is a combination of training and interpolator indices."""
-        return self.data_fidelity + self.surrogate_fidelity
+        return MultiIndex(self.data_fidelity + self.surrogate_fidelity)
 
     @property
     def has_surrogate(self) -> bool:
@@ -722,7 +730,8 @@ class Component(BaseModel, Serializable):
                 y_vars.append(var.name)
         return y_vars
 
-    def _match_index_set(self, index_set, misc_coeff):
+    def _match_index_set(self, index_set: Literal['train', 'test'] | IndexSet,
+                         misc_coeff: MiscTree | None) -> tuple[IndexSet, MiscTree]:
         """Helper function to grab the correct data structures for the given index set and MISC coefficients."""
         if misc_coeff is None:
             match index_set:
@@ -738,11 +747,11 @@ class Component(BaseModel, Serializable):
                 case 'train':
                     index_set = self.active_set
                 case 'test':
-                    index_set = self.active_set.union(self.candidate_set)
+                    index_set = cast(IndexSet, self.active_set.union(self.candidate_set))
                 case other:
                     raise ValueError(f"Index set must be 'train' or 'test'. {other} not recognized.")
 
-        return index_set, misc_coeff
+        return cast(IndexSet, index_set), misc_coeff
 
     def cache(self, kind: list | Literal["training"] = "training"):
         """Cache data for quicker access. Only `"training"` is supported.
@@ -1117,10 +1126,12 @@ class Component(BaseModel, Serializable):
         coeffs = []
         for alpha, beta in index_set:
             comb_coeff = misc_coeff[alpha, beta]
+            assert isinstance(comb_coeff, (int, float))
             if np.abs(comb_coeff) > 0:
                 coeffs.append(comb_coeff)
-                args = (self.misc_states.get((alpha, beta)),
-                        self.get_training_data(alpha, beta, y_vars=y_vars, cached=True))
+                state = self.misc_states[alpha, beta]
+                assert isinstance(state, InterpolatorState)
+                args = (state, self.get_training_data(alpha, beta, y_vars=y_vars, cached=True))
 
                 results.append(self.interpolator.predict(inputs, *args) if executor is None else
                                executor.submit(self.interpolator.predict, inputs, *args))
@@ -1353,11 +1364,13 @@ class Component(BaseModel, Serializable):
         coeffs = []
         for alpha, beta in index_set:
             comb_coeff = misc_coeff[alpha, beta]
+            assert isinstance(comb_coeff, (int, float))
             if np.abs(comb_coeff) > 0:
                 coeffs.append(comb_coeff)
                 func = self.interpolator.gradient if derivative == 'first' else self.interpolator.hessian
-                args = (self.misc_states.get((alpha, beta)),
-                        self.get_training_data(alpha, beta, y_vars=y_vars, cached=True))
+                state = self.misc_states[alpha, beta]
+                assert isinstance(state, InterpolatorState)
+                args = (state, self.get_training_data(alpha, beta, y_vars=y_vars, cached=True))
 
                 results.append(func(inputs, *args) if executor is None else executor.submit(func, inputs, *args))
 
