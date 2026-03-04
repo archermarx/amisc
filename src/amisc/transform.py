@@ -127,7 +127,19 @@ class Transform(ABC):
 
         return transforms
 
-    def transform(self, x: ArrayLike, inverse: bool = False, transform_args: tuple | None = None) -> ArrayLike:
+    @overload
+    def transform(self, x: int | float, inverse: bool = ..., transform_args: tuple | None = ...) -> float: ...
+
+    @overload
+    def transform(self, x: tuple, inverse: bool = ..., transform_args: tuple | None = ...) -> tuple: ...
+
+    @overload
+    def transform(self, x: list, inverse: bool = ..., transform_args: tuple | None = ...) -> list: ...
+
+    @overload
+    def transform(self, x: np.ndarray, inverse: bool = ..., transform_args: tuple | None = ...) -> np.ndarray: ...
+
+    def transform(self, x: int | float | tuple | list | np.ndarray, inverse: bool = False, transform_args: tuple | None = None) -> float | list | tuple | np.ndarray:
         """Transform the given values `x`. This wrapper function handles the input type and tries to
          return the transformed values in the same type.
 
