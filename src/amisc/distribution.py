@@ -177,8 +177,8 @@ class LogUniform(Distribution):
         x = LogUniform((1e-3, 1e-1))  # log10(x) ~ U(-3, -1)
         ```
     """
-    def __init__(self, dist_args: tuple, base=10):
-        self.base = base
+    def __init__(self, dist_args: tuple, base: float | int = 10):
+        self.base = float(base)
         super().__init__(dist_args)
 
     def __str__(self):
@@ -229,8 +229,8 @@ class LogNormal(Distribution):
         x = LogNormal((-2, 1))  # log10(x) ~ N(-2, 1)
         ```
     """
-    def __init__(self, dist_args: tuple, base=10):
-        self.base = base
+    def __init__(self, dist_args: tuple, base: float | int = 10):
+        self.base = float(base)
         super().__init__(dist_args)
 
     def __str__(self):
