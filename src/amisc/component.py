@@ -387,7 +387,7 @@ class Component(BaseModel, Serializable):
                               protected_namespaces=(), extra='allow')
     # Configuration
     serializers: Optional[ComponentSerializers] = None
-    name: Optional[str] = None
+    name: str = ""
     model: Callable[..., dict | Dataset]
     model_kwargs: str | dict | ModelKwargs = {}
     inputs: VariableList
@@ -417,8 +417,8 @@ class Component(BaseModel, Serializable):
     _model_end_time: float = -1.0    # Temporarily store the most recent model end timestamp from call_model
     _cache: dict = dict()            # Temporary cache for faster access to training data and similar
 
-    def __init__(self, /, model, *args, inputs=None, outputs=None, name=None, **kwargs):
-        if name is None:
+    def __init__(self, /, model, *args, inputs=None, outputs=None, name="", **kwargs):
+        if not name:
             name = _inspect_assignment('Component')  # try to assign the name from inspection
         name = name or model.__name__ or "Component_" + "".join(random.choices(string.digits, k=3))
 

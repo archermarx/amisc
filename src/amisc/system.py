@@ -216,7 +216,7 @@ class System(BaseModel, Serializable):
                               extra='allow')
 
     name: Annotated[str, Field(default_factory=lambda: "System_" + "".join(random.choices(string.digits, k=3)))]
-    components: Callable | Component | list[Callable | Component]
+    components: list[Component]
     train_history: list[dict] | TrainHistory = TrainHistory()
     amisc_version: str | None = None
     timestamp_prefix: str = "amisc_"
@@ -261,7 +261,7 @@ class System(BaseModel, Serializable):
     def __str__(self):
         return self.__repr__()
 
-    @field_validator('components')
+    @field_validator('components', mode='before')
     @classmethod
     def _validate_components(cls, comps) -> list[Component]:
         if not isinstance(comps, list):
@@ -276,7 +276,7 @@ class System(BaseModel, Serializable):
 
         return comps
 
-    @field_validator('train_history')
+    @field_validator('train_history', mode='before')
     @classmethod
     def _validate_train_history(cls, history) -> TrainHistory:
         if isinstance(history, TrainHistory):
@@ -318,13 +318,13 @@ class System(BaseModel, Serializable):
     def insert_components(self, components: list | Callable | Component):
         """Insert new components into the system."""
         components = components if isinstance(components, list) else [components]
-        self.components = self.components + components
+        self.components = System._validate_components(self.components + components)
 
     def swap_component(self, old_component: str | Component, new_component: Callable | Component):
         """Replace an old component with a new component."""
         old_name = old_component if isinstance(old_component, str) else old_component.name
         comps = [comp if comp.name != old_name else new_component for comp in self.components]
-        self.components = comps
+        self.components = System._validate_components(comps)
 
     def remove_component(self, component: str | Component):
         """Remove a component from the system."""
@@ -400,8 +400,6 @@ class System(BaseModel, Serializable):
 
         :param root_dir: the root directory for all build products
         """
-        # TODO: don't create dirs until we do something!
-
         if root_dir is not None:
             root_dir = Path(root_dir).resolve()
             
@@ -419,6 +417,7 @@ class System(BaseModel, Serializable):
             assert self.root_dir is not None
 
             log_file = None
+            # TODO: don't create surrogate or components dirs until necessary
             if not (pth := self.root_dir / 'surrogates').is_dir():
                 os.mkdir(pth)
             if not (pth := self.root_dir / 'components').is_dir():
