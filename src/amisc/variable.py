@@ -18,7 +18,7 @@ import random
 import string
 from collections import OrderedDict
 from pathlib import Path
-from typing import ClassVar, Optional, Sequence, Union, overload
+from typing import ClassVar, Optional, Sequence, Union, cast, overload
 
 import numpy as np
 import yaml
@@ -478,27 +478,28 @@ class Variable(BaseModel, Serializable[dict]):
         field_coords = values.pop('coords', coords)
         if field_coords is None:
             field_coords = self.compression.coords
+        assert field_coords is not None
         ret_dict = {'coords': field_coords}
 
         # For reconstruction: decompress -> denormalize -> interpolate
         if reconstruct:
-            try:
-                states = np.atleast_1d(values['latent'])    # (..., rank)
-            except KeyError as e:
-                raise ValueError('Must pass values["latent"] in for reconstruction.') from e
+            latent = values.get('latent')
+            if latent is None:
+                raise ValueError('Must pass values["latent"] in for reconstruction.')
+            states = np.atleast_1d(latent)                  # (..., rank)
             states = self.compression.reconstruct(states)   # (..., dof)
-            states = self.denormalize(states)               # (..., dof)
+            states = np.asarray(self.denormalize(states))   # (..., dof)
             states = self.compression.interpolate_from_grid(states, field_coords)
             ret_dict.update(states)
 
         # For compression: interpolate -> normalize -> compress
         else:
             states = self.compression.interpolate_to_grid(field_coords, values)
-            states = self.normalize(states)                 # (..., dof)
+            states = np.asarray(self.normalize(states))     # (..., dof)
             states = self.compression.compress(states)      # (..., rank)
             ret_dict['latent'] = states
 
-        return ret_dict
+        return cast(CompressionData, ret_dict)
 
     def reconstruct(self, values, coords=None):
         """Alias for `compress(reconstruct=True)`. See `compress` for more details."""
