@@ -19,7 +19,7 @@ import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Generic, Self, TypeVar, cast
 
 import yaml
 
@@ -28,20 +28,20 @@ from amisc.utils import parse_function_string
 __all__ = ['Serializable', 'Base64Serializable', 'StringSerializable', 'PickleSerializable', 'YamlSerializable']
 
 _builtin = str | dict | list | int | float | tuple | bool  # Generic type for common built-in Python objects
+T = TypeVar('T', bound=_builtin)
 
-
-class Serializable(ABC):
+class Serializable(ABC, Generic[T]):
     """Mixin interface for serializing and deserializing objects."""
 
     @abstractmethod
-    def serialize(self) -> _builtin:
+    def serialize(self) -> T:
         """Serialize to a builtin Python object."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def deserialize(cls, serialized_data: _builtin) -> Serializable:
-        """Construct a `Serializable` object from serialized data.
+    def deserialize(cls, serialized_data: T) -> Serializable[T]:
+        """Construct a `Serializable` object from data.
 
         !!! Note "Passing arguments to deserialize"
             Subclasses should generally not take arguments for deserialization. The serialized object should contain
@@ -51,24 +51,24 @@ class Serializable(ABC):
         raise NotImplementedError
 
 
-class Base64Serializable(Serializable):
+class Base64Serializable(Serializable[str]):
     """Mixin class for serializing objects using base64 encoding."""
     def serialize(self) -> str:
         return base64.b64encode(pickle.dumps(self)).decode('utf-8')
 
     @classmethod
-    def deserialize(cls, serialized_data: str) -> Base64Serializable:
-        return pickle.loads(base64.b64decode(serialized_data))
+    def deserialize(cls, serialized_data: str) -> Self:
+        return cast(Self, pickle.loads(base64.b64decode(serialized_data)))
 
 
-class StringSerializable(Serializable):
+class StringSerializable(Serializable[str]):
     """Mixin class for serializing objects using string representation."""
 
     def serialize(self) -> str:
         return str(self)
 
     @classmethod
-    def deserialize(cls, serialized_data: str, trust: bool = False) -> StringSerializable:
+    def deserialize(cls, serialized_data: str, trust: bool = False) -> Self:
         """Deserialize a string representation of the object.
 
         !!! Warning "Security Risk"
@@ -89,9 +89,9 @@ class StringSerializable(Serializable):
                 raise ValueError(f'String "{serialized_data}" is not a valid class signature.') from e
 
 
-class PickleSerializable(Serializable):
+class PickleSerializable(Serializable[str]):
     """Mixin class for serializing objects using pickle."""
-    def serialize(self, save_path: str | Path = None) -> str:
+    def serialize(self, save_path: str | Path | None = None) -> str:
         if save_path is None:
             raise ValueError('Must provide a save path for Pickle serialization.')
         with open(Path(save_path), 'wb') as fd:
@@ -99,13 +99,13 @@ class PickleSerializable(Serializable):
         return str(Path(save_path).resolve().as_posix())
 
     @classmethod
-    def deserialize(cls, serialized_data: str | Path) -> PickleSerializable:
+    def deserialize(cls, serialized_data: str | Path) -> Self:
         with open(Path(serialized_data), 'rb') as fd:
-            return pickle.load(fd)
+            return cast(Self, pickle.load(fd))
 
 
 @dataclass
-class YamlSerializable(Serializable):
+class YamlSerializable(Serializable[str]):
     """Mixin for serializing an object using Yaml load/dump from string."""
     obj: Any
 
@@ -117,6 +117,6 @@ class YamlSerializable(Serializable):
         return s
 
     @classmethod
-    def deserialize(cls, yaml_str: str) -> YamlSerializable:
-        obj = yaml.load(yaml_str, yaml.Loader)
-        return YamlSerializable(obj=obj)
+    def deserialize(cls, serialized_data: str) -> Self:
+        obj = yaml.load(serialized_data, yaml.Loader)
+        return cls(obj=obj)

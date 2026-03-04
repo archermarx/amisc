@@ -36,7 +36,7 @@ __all__ = ['Variable', 'VariableList']
 _TransformLike = Union[str, Transform, list[str | Transform]]  # something that can be converted to a Transform
 
 
-class Variable(BaseModel, Serializable):
+class Variable(BaseModel, Serializable[dict]):
     """Object for storing information about variables and providing methods for pdf evaluation, sampling, etc.
     All fields will undergo pydantic validation and conversion to the correct types.
 
@@ -525,22 +525,22 @@ class Variable(BaseModel, Serializable):
         return d
 
     @classmethod
-    def deserialize(cls, data: dict, search_paths: list[str | Path] | None = None) -> Variable:
+    def deserialize(cls, serialized_data: dict, search_paths: list[str | Path] | None = None) -> Variable:
         """Convert a `dict` to a `Variable` object. Let `pydantic` handle validation and conversion of fields.
 
         :param data: the `dict` to convert to a `Variable`
         :param search_paths: the paths to search for compression files (if necessary)
         :returns: the `Variable` object
         """
-        if isinstance(data, Variable):
-            return data
-        elif isinstance(data, str):
-            return cls(name=data)
+        if isinstance(serialized_data, Variable):
+            return serialized_data
+        elif isinstance(serialized_data, str):
+            return cls(name=serialized_data)
         else:
-            if (compression := data.get('compression', None)) is not None:
+            if (compression := serialized_data.get('compression', None)) is not None:
                 if isinstance(compression, str):
-                    data['compression'] = search_for_file(compression, search_paths=search_paths)
-            return cls(**data)
+                    serialized_data['compression'] = search_for_file(compression, search_paths=search_paths)
+            return cls(**serialized_data)
 
     @staticmethod
     def _yaml_representer(dumper: yaml.Dumper, data: Variable) -> yaml.MappingNode:
@@ -714,7 +714,7 @@ class VariableList(OrderedDict, Serializable):
     def __repr__(self):
         return self.__str__()
 
-    def serialize(self, save_path='.') -> list[dict]:
+    def serialize(self, save_path: Path | str ='.') -> list[dict]:
         """Convert to a list of `dict` objects for each `Variable` in the list.
 
         :param save_path: the path to save the compression data to (defaults to current directory)
@@ -748,11 +748,11 @@ class VariableList(OrderedDict, Serializable):
         return merged_vars
 
     @classmethod
-    def deserialize(cls, data: dict | list[dict], search_paths=None) -> VariableList:
+    def deserialize(cls, serialized_data: dict | list[dict], search_paths=None) -> VariableList:
         """Convert a `dict` or list of `dict` objects to a `VariableList` object. Let `pydantic` handle validation."""
-        if not isinstance(data, list):
-            data = [data]
-        return cls([Variable.deserialize(d, search_paths=search_paths) for d in data])
+        if not isinstance(serialized_data, list):
+            serialized_data = [serialized_data]
+        return cls([Variable.deserialize(d, search_paths=search_paths) for d in serialized_data])
 
     @staticmethod
     def _yaml_representer(dumper: yaml.Dumper, data: VariableList) -> yaml.SequenceNode:
