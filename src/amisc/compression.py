@@ -156,6 +156,7 @@ class Compression(PickleSerializable, ABC):
             ret_dict = {}
             loop_shape = state.shape[:-1]
             coords_shape = n_coords.shape[:-1]
+            assert self.num_pts is not None
             state = state.reshape((*loop_shape, self.num_pts, self.num_qoi))
             n_coords = n_coords.reshape((-1, self.dim))
             for i, qoi in enumerate(self.fields):
@@ -171,9 +172,11 @@ class Compression(PickleSerializable, ABC):
 
         if coords_obj_array:
             # Make an object array for each qoi, where each element is a unique `(*loop_shape, *coord_shape)` array
+            _first_dict = None
             for _, _first_dict in np.ndenumerate(all_qois):
                 if _first_dict is not None:
                     break
+            assert _first_dict is not None
             ret = {qoi: np.empty(all_qois.shape, dtype=object) for qoi in _first_dict}
             for qoi in ret:
                 for index, qoi_dict in np.ndenumerate(all_qois):
@@ -232,6 +235,7 @@ class Compression(PickleSerializable, ABC):
 
             coords_shape = f_coords.shape[:-1]
             loop_shape = next(iter(f_values.values())).shape[:-len(coords_shape)]
+            assert self.num_pts is not None
             states = np.empty((*loop_shape, self.num_pts, self.num_qoi))
             f_coords = f_coords.reshape(-1, self.dim)
             for i, qoi in enumerate(self.fields):
@@ -243,7 +247,7 @@ class Compression(PickleSerializable, ABC):
                     interp = self.interpolator()(f_coords, field_vals, **self.interpolate_opts)
                     yg = interp(grid_coords)
                     states[..., i] = yg.T.reshape(*loop_shape, self.num_pts)
-            all_states[j] = states.reshape((*loop_shape, self.dof))
+            all_states[j] = states.reshape((*loop_shape, self.num_pts * self.num_qoi))
 
         # All fields now on the same dof grid, so stack them in same array
         state_shape = ()
@@ -262,7 +266,7 @@ class Compression(PickleSerializable, ABC):
         return ret_states
 
     @abstractmethod
-    def compute_map(self, **kwargs):
+    def compute_map(self, data_matrix, **kwargs):
         """Compute and store the compression map. Must set the value of `coords` and `_is_computed`. Should
         use the same normalization as the parent `Variable` object.
 
@@ -297,7 +301,7 @@ class Compression(PickleSerializable, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def estimate_latent_ranges(self) -> list[tuple[float, float]]:
+    def estimate_latent_ranges(self) -> list[tuple[float, float]] | None:
         """Estimate the range of the latent space coefficients."""
         raise NotImplementedError
 
@@ -336,7 +340,7 @@ class SVD(Compression):
                              reconstruction_tol=self.reconstruction_tol)
 
     def compute_map(self, data_matrix: np.ndarray | dict, rank: int | None = None, energy_tol: float | None = None,
-                    reconstruction_tol: float | None = None):
+                    reconstruction_tol: float | None = None, **kwargs):
         """Compute the SVD compression map from the data matrix. Recall that `dof` is the total number of degrees of
         freedom, equal to the number of grid points `num_pts` times the number of quantities of interest `num_qoi`
         at each grid point.
@@ -371,6 +375,7 @@ class SVD(Compression):
                 if relative_error(u[:, :r] @ u[:, :r].T @ data_matrix, data_matrix) <= reconstruction_tol:
                     rank = r
                     break
+            assert rank is not None
             energy_tol = energy_frac[rank - 1]
         else:
             energy_tol = energy_tol or self.energy_tol or 0.95
@@ -386,16 +391,20 @@ class SVD(Compression):
         self._map_computed = True
 
     def compress(self, data):
+        assert self.projection_matrix is not None
         return np.squeeze(self.projection_matrix.T @ data[..., np.newaxis], axis=-1)
 
     def reconstruct(self, compressed):
+        assert self.projection_matrix is not None
         return np.squeeze(self.projection_matrix @ compressed[..., np.newaxis], axis=-1)
 
     def latent_size(self):
+        assert self.rank is not None
         return self.rank
 
     def estimate_latent_ranges(self):
         if self.map_exists:
+            assert self.data_matrix is not None
             latent_data = self.compress(self.data_matrix.T)  # (rank, num_samples)
             latent_min = np.min(latent_data, axis=0)
             latent_max = np.max(latent_data, axis=0)
